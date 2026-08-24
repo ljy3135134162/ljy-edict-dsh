@@ -55,6 +55,7 @@ BASE = pathlib.Path(__file__).parent
 DIST = BASE / 'dist'          # React 构建产物 (npm run build)
 DATA = BASE.parent / "data"
 SCRIPTS = BASE.parent / 'scripts'
+MODELS_CFG = DATA / 'models.json'
 _ACTIVE_TASK_DATA_DIR = None
 
 # 静态资源 MIME 类型
@@ -2425,6 +2426,10 @@ class Handler(BaseHTTPRequestHandler):
             self.send_json(read_json(DATA / 'model_change_log.json', []))
         elif p == '/api/last-result':
             self.send_json(read_json(DATA / 'last_model_change_result.json', {}))
+        elif p == '/api/models':
+            # 返回 data/models.json 中的模型列表
+            from scripts.sync_agent_config import load_models as _lm
+            self.send_json({'models': _lm(), 'source': str(MODELS_CFG) if MODELS_CFG.exists() else '内置兜底'})
         elif p == '/api/officials-stats':
             self.send_json(read_json(DATA / 'officials_stats.json', {}))
         elif p == '/api/morning-brief':
@@ -2846,6 +2851,30 @@ class Handler(BaseHTTPRequestHandler):
                 return cfg
             atomic_json_update(DATA / 'agent_config.json', _set_channel, {})
             self.send_json({'ok': True, 'message': f'派发渠道已切换为 {channel}'})
+
+        # ── 模型配置管理 POST /api/models ──
+        elif p == '/api/models':
+            models = body.get('models', [])
+            if not isinstance(models, list):
+                self.send_json({'ok': False, 'error': 'models must be a list'}, 400)
+                return
+            # 校验每条记录
+            valid = []
+            for m in models:
+                if isinstance(m, dict) and m.get('id') and m.get('label') and m.get('provider'):
+                    valid.append({'id': m['id'], 'label': m['label'], 'provider': m['provider']})
+                elif isinstance(m, str):
+                    valid.append({'id': m, 'label': m, 'provider': '自定义'})
+            try:
+                import json as _json
+                MODELS_CFG.write_text(_json.dumps({'models': valid}, indent=2, ensure_ascii=False), encoding='utf-8')
+                # 同步更新 agent_config.json 的 knownModels
+                ac = read_json(DATA / 'agent_config.json', {})
+                ac['knownModels'] = valid
+                atomic_json_update(DATA / 'agent_config.json', lambda c: (c.update({'knownModels': valid}), c)[1], {})
+                self.send_json({'ok': True, 'saved': len(valid), 'path': str(MODELS_CFG)})
+            except Exception as e:
+                self.send_json({'ok': False, 'error': str(e)}, 500)
 
         # ── 朝堂议政 POST ──
         elif p == '/api/court-discuss/start':

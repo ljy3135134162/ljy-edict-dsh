@@ -15,6 +15,39 @@ BASE = pathlib.Path(__file__).parent.parent
 DATA = BASE / 'data'
 OPENCLAW_HOME = get_openclaw_home()
 OPENCLAW_CFG = OPENCLAW_HOME / 'openclaw.json'
+MODELS_CFG = DATA / 'models.json'
+
+
+def load_models():
+    """加载模型列表：优先 data/models.json，不存在则返回内置兜底。"""
+    if MODELS_CFG.exists():
+        try:
+            data = json.loads(MODELS_CFG.read_text(encoding='utf-8'))
+            models = data.get('models', [])
+            valid = []
+            for m in models:
+                if isinstance(m, dict) and m.get('id') and m.get('label') and m.get('provider'):
+                    valid.append({'id': m['id'], 'label': m['label'], 'provider': m['provider']})
+                elif isinstance(m, str):
+                    valid.append({'id': m, 'label': m, 'provider': '自定义'})
+            if valid:
+                return valid
+        except Exception as e:
+            log.warning(f'load_models 读取 models.json 失败: {e}')
+    # 内置兜底
+    return [
+        {'id': 'agnes-2.0-flash',          'label': 'Agnes 2.0 Flash',        'provider': 'Agnes AI (Free)'},
+        {'id': 'agnes-2.5-flash',          'label': 'Agnes 2.5 Flash',        'provider': 'Agnes AI (Free)'},
+        {'id': 'agnes-image-2.0-flash',    'label': 'Agnes Image 2.0 Flash',  'provider': 'Agnes AI (Free)'},
+        {'id': 'agnes-image-2.1-flash',    'label': 'Agnes Image 2.1 Flash',  'provider': 'Agnes AI (Free)'},
+        {'id': 'agnes-video-v2.0',         'label': 'Agnes Video v2.0',       'provider': 'Agnes AI (Free)'},
+        {'id': 'deepseek-v4-flash',        'label': 'DeepSeek V4 Flash',      'provider': 'SenseNova'},
+        {'id': 'glm-5.2',                  'label': 'GLM-5.2',                'provider': 'SenseNova'},
+        {'id': 'sensenova-6.7-flash-lite', 'label': 'SenseNova 6.7 Flash Lite','provider': 'SenseNova'},
+        {'id': 'sensenova-u1-fast',        'label': 'SenseNova U1 Fast',      'provider': 'SenseNova'},
+        {'id': 'sensenova-6.8-flash-lite', 'label': 'SenseNova 6.8 Flash Lite','provider': 'SenseNova'},
+        {'id': 'gemma4-31b',               'label': 'Gemma4 31B',             'provider': 'DGX Spark'},
+    ]
 
 ID_LABEL = {
     'taizi':    {'label': '太子',   'role': '太子',     'duty': '飞书消息分拣与回奏',  'emoji': '🤴'},
@@ -31,19 +64,7 @@ ID_LABEL = {
     'zaochao':  {'label': '钦天监', 'role': '朝报官',   'duty': '每日新闻采集与简报',  'emoji': '📰'},
 }
 
-KNOWN_MODELS = [
-    {'id': 'agnes-2.0-flash',          'label': 'Agnes 2.0 Flash',        'provider': 'Agnes AI (Free)'},
-    {'id': 'agnes-2.5-flash',          'label': 'Agnes 2.5 Flash',        'provider': 'Agnes AI (Free)'},
-    {'id': 'agnes-image-2.0-flash',    'label': 'Agnes Image 2.0 Flash',  'provider': 'Agnes AI (Free)'},
-    {'id': 'agnes-image-2.1-flash',    'label': 'Agnes Image 2.1 Flash',  'provider': 'Agnes AI (Free)'},
-    {'id': 'agnes-video-v2.0',         'label': 'Agnes Video v2.0',       'provider': 'Agnes AI (Free)'},
-    {'id': 'deepseek-v4-flash',        'label': 'DeepSeek V4 Flash',      'provider': 'SenseNova'},
-    {'id': 'glm-5.2',                  'label': 'GLM-5.2',                'provider': 'SenseNova'},
-    {'id': 'sensenova-6.7-flash-lite', 'label': 'SenseNova 6.7 Flash Lite','provider': 'SenseNova'},
-    {'id': 'sensenova-u1-fast',        'label': 'SenseNova U1 Fast',      'provider': 'SenseNova'},
-    {'id': 'sensenova-6.8-flash-lite', 'label': 'SenseNova 6.8 Flash Lite','provider': 'SenseNova'},
-    {'id': 'gemma4-31b',               'label': 'Gemma4 31B',             'provider': 'DGX Spark'},
-]
+KNOWN_MODELS = load_models()
 
 
 def normalize_model(model_value, fallback='unknown'):

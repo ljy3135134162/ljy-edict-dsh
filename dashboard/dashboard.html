@@ -204,6 +204,29 @@
     .mc-st.ok{display:block;background:#0a2018;color:var(--ok);border:1px solid #2ecc8a44}
     .mc-st.err{display:block;background:#200a10;color:var(--danger);border:1px solid #ff527044}
     .mc-st.pending{display:block;background:#0a1228;color:var(--acc);border:1px solid #6a9eff44}
+    /* 模型管理 */
+    .mm-wrap{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:14px}
+    .mm-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+    .mm-title{font-size:13px;font-weight:700;color:var(--muted);letter-spacing:.05em;text-transform:uppercase}
+    .mm-src{font-size:10px;color:var(--muted);font-weight:400}
+    .mm-list{display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto}
+    .mm-row{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;font-size:12px}
+    .mm-id{font-family:monospace;color:var(--acc);min-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .mm-label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .mm-prov{color:var(--muted);min-width:100px;text-align:right}
+    .mm-del{background:transparent;border:none;color:var(--danger);cursor:pointer;font-size:14px;padding:2px 6px;border-radius:4px;opacity:.6}.mm-del:hover{opacity:1;background:#200a10}
+    .mm-add{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+    .mm-add input{background:var(--panel2);border:1px solid var(--line);border-radius:7px;color:var(--text);padding:7px 10px;font-size:12px;outline:none;font-family:inherit}
+    .mm-add input:focus{border-color:var(--acc)}
+    .mm-add input[id^="mm-in-id"]{width:180px;flex:none;font-family:monospace}
+    .mm-add input[id^="mm-in-lb"]{width:200px;flex:none}
+    .mm-add input[id^="mm-in-pv"]{flex:1;min-width:100px}
+    .mm-save{background:var(--acc);color:#000;border:none;border-radius:7px;padding:7px 16px;font-size:12px;font-weight:600;cursor:pointer}
+    .mm-save:hover{filter:brightness(1.15)}
+    .mm-save:disabled{background:#2a3a6a;color:var(--muted);cursor:not-allowed;filter:none}
+    .mm-toast{font-size:11px;padding:4px 8px;border-radius:5px;margin-left:8px;display:none}
+    .mm-toast.ok{display:inline-block;background:#0a2018;color:var(--ok);border:1px solid #2ecc8a44}
+    .mm-toast.err{display:inline-block;background:#200a10;color:var(--danger);border:1px solid #ff527044}
     .cl-wrap{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
     .cl-title{font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.05em;text-transform:uppercase;margin-bottom:10px}
     .cl-row{display:flex;gap:10px;font-size:11px;padding:5px 0;border-bottom:1px solid var(--line)}.cl-row:last-child{border-bottom:none}
@@ -744,6 +767,17 @@
   <div class="panel" id="panel-models">
     <div class="sec-title" style="margin-bottom:14px">各省部 · 模型配置 <span style="font-weight:400;text-transform:none;letter-spacing:0;font-size:11px;color:var(--muted)">— 更改后自动重启 Gateway（约5秒）</span></div>
     <div class="model-grid" id="model-grid"></div>
+    <div class="mm-wrap">
+      <div class="mm-hdr"><span class="mm-title">📦 可用模型管理 <span class="mm-src" id="mm-src-label"></span></span>
+        <span id="mm-toast" class="mm-toast"></span></div>
+      <div class="mm-list" id="mm-list"><div style="font-size:12px;color:var(--muted);padding:8px">加载中…</div></div>
+      <div class="mm-add">
+        <input id="mm-in-id" placeholder="model-id（必填）" />
+        <input id="mm-in-lb" placeholder="显示名称" />
+        <input id="mm-in-pv" placeholder="Provider（如 Agnes AI）" />
+        <button class="mm-save" onclick="addModel()">＋ 添加模型</button>
+      </div>
+    </div>
     <div class="cl-wrap"><div class="cl-title">变更记录</div><div id="cl-list"></div></div>
   </div>
 
@@ -1881,6 +1915,67 @@ function renderCL(log){
   }).join('')
 }
 
+/* ══ 模型管理 ══ */
+let _modelsCache = [];
+async function loadModels(){
+  try{
+    const r = await fetchJ(API+'/models');
+    _modelsCache = r.models || [];
+    const srcEl = document.getElementById('mm-src-label');
+    if(srcEl) srcEl.textContent = '(来源: '+r.source+')';
+    renderModelList();
+  }catch(e){
+    document.getElementById('mm-list').innerHTML='<div style="font-size:12px;color:var(--muted);padding:8px">无法加载模型列表</div>';
+  }
+}
+function renderModelList(){
+  const el = document.getElementById('mm-list');
+  if(!_modelsCache.length){el.innerHTML='<div style="font-size:12px;color:var(--muted);padding:8px">暂无模型</div>';return}
+  el.innerHTML = _modelsCache.map((m,i)=>`
+    <div class="mm-row">
+      <span class="mm-id">${esc(m.id)}</span>
+      <span class="mm-label">${esc(m.label)}</span>
+      <span class="mm-prov">${esc(m.provider)}</span>
+      <button class="mm-del" onclick="removeModel(${i})" title="删除">✕</button>
+    </div>`).join('');
+}
+function showMMToast(msg, ok){
+  const t = document.getElementById('mm-toast');
+  t.className = 'mm-toast '+(ok?'ok':'err');
+  t.textContent = (ok?'✅ ':'❌ ') + msg;
+  setTimeout(()=>{t.className='mm-toast';t.textContent=''},3000);
+}
+async function addModel(){
+  const id = document.getElementById('mm-in-id').value.trim();
+  const label = document.getElementById('mm-in-lb').value.trim() || id;
+  const provider = document.getElementById('mm-in-pv').value.trim() || '自定义';
+  if(!id){showMMToast('model-id 不能为空','false');return}
+  if(_modelsCache.some(m=>m.id===id)){showMMToast('该 model-id 已存在','false');return}
+  _modelsCache.push({id, label, provider});
+  try{
+    const r = await fetchJ(API+'/models', {models: _modelsCache}, 'POST');
+    if(r.ok){showMMToast('已添加 '+label,'true');
+      document.getElementById('mm-in-id').value='';
+      document.getElementById('mm-in-lb').value='';
+      document.getElementById('mm-in-pv').value='';
+      // 同步刷新 agent_config.json
+      await fetchJ(API+'/agent-config').then(()=>loadAgentConfig()).catch(()=>{});
+    } else { showMMToast(r.error||'保存失败','false'); _modelsCache.pop(); renderModelList(); }
+  }catch(e){ showMMToast('网络错误','false'); _modelsCache.pop(); renderModelList(); }
+}
+function removeModel(idx){
+  const m = _modelsCache[idx];
+  if(!m||!confirm('确认删除模型「'+m.id+'」？'))return;
+  _modelsCache.splice(idx,1);
+  (async()=>{
+    try{
+      const r = await fetchJ(API+'/models', {models: _modelsCache}, 'POST');
+      if(r.ok){showMMToast('已删除 '+m.label,'true'); renderModelList(); await loadAgentConfig();}
+      else{showMMToast(r.error||'删除失败','false'); await loadModels();}
+    }catch(e){showMMToast('网络错误','false'); await loadModels();}
+  })();
+}
+
 /* ══ SKILLS ══ */
 function renderSkills(cfg){
   if(!cfg||!cfg.agents){document.getElementById('skills-grid').innerHTML='<div class="empty">无法加载</div>';return}
@@ -2030,6 +2125,7 @@ async function loadAgentConfig(){
     agentConfig=await fetchJ(API+'/agent-config');
     renderModels(agentConfig);
     renderSkills(agentConfig);
+    await loadModels();
     const log=await fetchJ(API+'/model-change-log').catch(()=>[]);
     renderCL(log);
   }catch(e){
