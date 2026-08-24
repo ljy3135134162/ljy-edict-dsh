@@ -4,6 +4,23 @@
   <strong>我用 1300 年前的帝国制度，重新设计了 AI 多 Agent 协作架构。<br>结果发现，古人比现代 AI 框架更懂分权制衡。</strong>
 </p>
 
+<!-- DSH 适配说明 -->
+<div style="background:#0f1219;border:1px solid #1c2236;border-radius:12px;padding:16px;margin:16px 0">
+  <h3 style="margin:0 0 8px 0;color:#6a9eff;font-size:15px">🔌 本仓库 — DeepSeek Harness (DSH) 适配版</h3>
+  <p style="margin:0 0 8px 0;color:#dde4f8;font-size:13px;line-height:1.6">
+    本分支为 <a href="https://github.com/cft0808/edict" style="color:#6a9eff">cft0808/edict</a> 的 DSH 插件版本，针对 DeepSeek Harness 框架进行了全面适配：
+  </p>
+  <ul style="margin:0 0 8px 0;padding-left:20px;color:#dde4f8;font-size:13px;line-height:1.8">
+    <li><b>模型适配</b>：从 OpenClaw 的 Claude/GPT 迁移至 Agnes AI / SenseNova / DGX Spark</li>
+    <li><b>配置管理</b>：新增 <code>data/models.json</code> 可编辑模型列表，支持看板页面直接增删改</li>
+    <li><b>路径修复</b>：修正工作空间路径、agent 目录结构以匹配 DSH 部署</li>
+    <li><b>零依赖后端</b>：纯 Python stdlib，无需外部数据库或消息队列</li>
+  </ul>
+  <p style="margin:0;color:#5a6b92;font-size:12px">
+    原始项目：cft0808/edict · 本适配：ljy3135134162/ljy-edict-dsh
+  </p>
+</div>
+
 <p align="center">
   <sub>12 个 AI Agent（11 个业务角色 + 1 个兼容角色）组成三省六部：太子分拣、中书省规划、门下省审核封驳、尚书省派发、六部+吏部并行执行。<br>比 CrewAI 多一层<b>制度性审核</b>，比 AutoGen 多一个<b>实时看板</b>。</sub>
 </p>
@@ -837,3 +854,21 @@ python3 scripts/skill_manager.py import-official-hub --agents menxia
   <sub>Governing AI with the wisdom of ancient empires</sub><br><br>
   <a href="#-朕的邸报公众号"><img src="https://img.shields.io/badge/公众号_cft0808-关注获取更新-07C160?style=for-the-badge&logo=wechat&logoColor=white" alt="WeChat"></a>
 </p>
+
+---
+
+## 📌 版本说明
+
+| 版本 | 仓库 | 说明 |
+|------|------|------|
+| **原版** | [cft0808/edict](https://github.com/cft0808/edict) | 基于 OpenClaw 的三省六部多 Agent 系统 |
+| **DSH 适配版** | [ljy3135134162/ljy-edict-dsh](https://github.com/ljy3135134162/ljy-edict-dsh) | 针对 DeepSeek Harness 框架优化，支持 Agnes AI / SenseNova 模型 |
+
+### DSH 适配版变更日志
+
+- ✅ 模型列表从 OpenClaw 迁移至 DSH settings.yaml 的 providers（Agnes AI / SenseNova / DGX Spark）
+- ✅ 新增 `data/models.json` 可编辑配置，看板页面可直接增删改模型
+- ✅ 修复工作空间路径（`~/.dsh/edict/agents/` 替代 `/app/.openclaw/workspace-*`）
+- ✅ 更新 `sync_agent_config.py` 优先读取 `models.json` 而非硬编码
+- ✅ 修复 `openclaw.json` 路径为本地真实路径
+- ✅ Dashboard API 新增 `/api/models` 端点支持模型配置管理
